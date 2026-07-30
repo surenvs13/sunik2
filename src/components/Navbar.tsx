@@ -54,41 +54,60 @@ export const Navbar: React.FC<Props> = ({
   liveSyncPulse = false
 }) => {
   return (
-    <header className="bg-slate-900 text-white border-b border-slate-800 sticky top-0 z-40">
+    <header className="bg-slate-900 text-white border-b border-slate-800 relative md:sticky md:top-0 z-40">
       {/* Top Brand & Stats Bar */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3.5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 py-2.5 sm:py-3.5 flex flex-col md:flex-row md:items-center justify-between gap-2.5 sm:gap-4">
         {/* Brand Logo & Description */}
-        <div className="flex items-center gap-3">
-          <div className="flex items-center -space-x-1.5">
-            <div className="p-2 bg-red-500/20 text-red-400 rounded-xl border border-red-500/30">
-              <Stethoscope className="w-5 h-5" />
+        <div className="flex items-center justify-between md:justify-start gap-3">
+          <div className="flex items-center gap-2.5">
+            <div className="flex items-center -space-x-1.5">
+              <div className="p-1.5 sm:p-2 bg-red-500/20 text-red-400 rounded-xl border border-red-500/30">
+                <Stethoscope className="w-4 h-4 sm:w-5 sm:h-5" />
+              </div>
+              <div className="p-1.5 sm:p-2 bg-indigo-500/20 text-indigo-400 rounded-xl border border-indigo-500/30">
+                <Scale className="w-4 h-4 sm:w-5 sm:h-5" />
+              </div>
+              <div className="p-1.5 sm:p-2 bg-cyan-500/20 text-cyan-400 rounded-xl border border-cyan-500/30">
+                <Baby className="w-4 h-4 sm:w-5 sm:h-5" />
+              </div>
             </div>
-            <div className="p-2 bg-indigo-500/20 text-indigo-400 rounded-xl border border-indigo-500/30">
-              <Scale className="w-5 h-5" />
-            </div>
-            <div className="p-2 bg-cyan-500/20 text-cyan-400 rounded-xl border border-cyan-500/30">
-              <Baby className="w-5 h-5" />
+
+            <div>
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <h1 className="text-sm sm:text-base font-black tracking-tight text-white">MedFamily Sync</h1>
+                <span className="text-[9px] sm:text-[10px] font-bold px-1.5 py-0.5 bg-gradient-to-r from-sky-500 to-indigo-500 text-white rounded-full">
+                  AI Roster Sync
+                </span>
+              </div>
+              <p className="text-[11px] sm:text-xs text-slate-300 hidden sm:block">
+                Hospital Doctor &amp; Lawyer Family Monthly Roster Alignment
+              </p>
             </div>
           </div>
 
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-base font-black tracking-tight text-white">MedFamily Sync</h1>
-              <span className="text-[10px] font-bold px-2 py-0.5 bg-gradient-to-r from-sky-500 to-indigo-500 text-white rounded-full">
-                AI Roster Sync
-              </span>
-            </div>
-            <p className="text-xs text-slate-300">
-              Hospital Doctor & Lawyer Family Monthly Roster Alignment
-            </p>
+          {/* Mobile Live Sync Pill */}
+          <div 
+            className={`md:hidden px-2 py-1 rounded-lg border flex items-center gap-1.5 text-[10px] font-bold transition-all ${
+              liveSyncPulse 
+                ? 'bg-emerald-500/30 text-emerald-200 border-emerald-400' 
+                : isLiveConnected 
+                  ? 'bg-emerald-950/70 text-emerald-300 border-emerald-500/40' 
+                  : 'bg-amber-950/70 text-amber-300 border-amber-500/40'
+            }`}
+          >
+            <span className="relative flex h-1.5 w-1.5">
+              <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${isLiveConnected ? 'bg-emerald-400' : 'bg-amber-400'} opacity-75`}></span>
+              <span className={`relative inline-flex rounded-full h-1.5 w-1.5 ${isLiveConnected ? 'bg-emerald-500' : 'bg-amber-500'}`}></span>
+            </span>
+            <span>{isLiveConnected ? 'Live Sync' : 'Offline'}</span>
           </div>
         </div>
 
         {/* Quick Stats Pills & Actions */}
-        <div className="flex flex-wrap items-center gap-2 shrink-0">
-          {/* Live Sync Active Indicator */}
+        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 shrink-0">
+          {/* Live Sync Active Indicator (Desktop) */}
           <div 
-            className={`px-3 py-1.5 rounded-xl border flex items-center gap-2 text-xs font-semibold transition-all shadow-xs ${
+            className={`hidden md:flex px-3 py-1.5 rounded-xl border items-center gap-2 text-xs font-semibold transition-all shadow-xs ${
               liveSyncPulse 
                 ? 'bg-emerald-500/30 text-emerald-200 border-emerald-400 scale-105' 
                 : isLiveConnected 
