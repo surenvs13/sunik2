@@ -1,0 +1,8 @@
+{
+  "name": "Remix SUNIK",
+  "description": "Smart roster and monthly calendar sync for hospital doctor and lawyer family with AI document and WhatsApp parser",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
