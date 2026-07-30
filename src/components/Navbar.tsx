@@ -32,6 +32,8 @@ interface Props {
   onUndo?: () => void;
   familyNames: FamilyNames;
   onOpenEditNames: () => void;
+  isLiveConnected?: boolean;
+  liveSyncPulse?: boolean;
 }
 
 export const Navbar: React.FC<Props> = ({
@@ -47,7 +49,9 @@ export const Navbar: React.FC<Props> = ({
   canUndo,
   onUndo,
   familyNames,
-  onOpenEditNames
+  onOpenEditNames,
+  isLiveConnected = true,
+  liveSyncPulse = false
 }) => {
   return (
     <header className="bg-slate-900 text-white border-b border-slate-800 sticky top-0 z-40">
@@ -82,6 +86,26 @@ export const Navbar: React.FC<Props> = ({
 
         {/* Quick Stats Pills & Actions */}
         <div className="flex flex-wrap items-center gap-2 shrink-0">
+          {/* Live Sync Active Indicator */}
+          <div 
+            className={`px-3 py-1.5 rounded-xl border flex items-center gap-2 text-xs font-semibold transition-all shadow-xs ${
+              liveSyncPulse 
+                ? 'bg-emerald-500/30 text-emerald-200 border-emerald-400 scale-105' 
+                : isLiveConnected 
+                  ? 'bg-emerald-950/70 text-emerald-300 border-emerald-500/40' 
+                  : 'bg-amber-950/70 text-amber-300 border-amber-500/40'
+            }`}
+            title={isLiveConnected ? "Real-time Live Sync active across all users and devices" : "Connecting live sync..."}
+          >
+            <span className="relative flex h-2 w-2">
+              <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${isLiveConnected ? 'bg-emerald-400' : 'bg-amber-400'} opacity-75`}></span>
+              <span className={`relative inline-flex rounded-full h-2 w-2 ${isLiveConnected ? 'bg-emerald-500' : 'bg-amber-500'}`}></span>
+            </span>
+            <span className="text-[11px] font-bold tracking-wide">
+              {liveSyncPulse ? '⚡ Live Sync Updated!' : isLiveConnected ? 'Live Sync Active' : 'Connecting Sync...'}
+            </span>
+          </div>
+
           {/* Edit Family Names Button */}
           <button
             onClick={onOpenEditNames}

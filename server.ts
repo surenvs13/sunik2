@@ -1,5 +1,6 @@
 import express from "express";
 import path from "path";
+import fs from "fs";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, Type } from "@google/genai";
 import * as dotenv from "dotenv";
@@ -11,6 +12,98 @@ const PORT = 3000;
 
 // Body parser with 20mb limit for PDF/Excel base64 uploads
 app.use(express.json({ limit: "20mb" }));
+
+// --- REAL-TIME LIVE SYNC & PERSISTENCE ---
+const STORE_FILE_PATH = path.join(process.cwd(), "app-data-store.json");
+
+function loadStoreState() {
+  try {
+    if (fs.existsSync(STORE_FILE_PATH)) {
+      const raw = fs.readFileSync(STORE_FILE_PATH, "utf8");
+      return JSON.parse(raw);
+    }
+  } catch (err) {
+    console.error("Error reading store file:", err);
+  }
+  return null;
+}
+
+function saveStoreState(data: any) {
+  try {
+    fs.writeFileSync(STORE_FILE_PATH, JSON.stringify(data, null, 2), "utf8");
+  } catch (err) {
+    console.error("Error writing store file:", err);
+  }
+}
+
+let globalStoreState: any = loadStoreState();
+const sseClients = new Set<express.Response>();
+
+function broadcastStateUpdate(newState: any, senderId?: string) {
+  globalStoreState = newState;
+  saveStoreState(globalStoreState);
+
+  const payload = JSON.stringify({
+    type: "LIVE_UPDATE",
+    data: newState,
+    senderId,
+    timestamp: Date.now(),
+  });
+
+  for (const client of sseClients) {
+    try {
+      client.write(`data: ${payload}\n\n`);
+    } catch {
+      sseClients.delete(client);
+    }
+  }
+}
+
+// REST API Endpoints for State & Live Stream
+app.get("/api/state", (req, res) => {
+  res.json({ success: true, data: globalStoreState });
+});
+
+app.post("/api/sync", (req, res) => {
+  const { state, senderId } = req.body;
+  if (state) {
+    broadcastStateUpdate(state, senderId);
+  }
+  res.json({ success: true, timestamp: Date.now() });
+});
+
+app.get("/api/stream", (req, res) => {
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache, no-transform");
+  res.setHeader("Connection", "keep-alive");
+  res.setHeader("X-Accel-Buffering", "no");
+
+  sseClients.add(res);
+
+  if (globalStoreState) {
+    res.write(
+      `data: ${JSON.stringify({
+        type: "INIT",
+        data: globalStoreState,
+        timestamp: Date.now(),
+      })}\n\n`
+    );
+  }
+
+  const interval = setInterval(() => {
+    try {
+      res.write(": ping\n\n");
+    } catch {
+      clearInterval(interval);
+      sseClients.delete(res);
+    }
+  }, 15000);
+
+  req.on("close", () => {
+    clearInterval(interval);
+    sseClients.delete(res);
+  });
+});
 
 // Lazy init Gemini client
 function getGeminiClient() {

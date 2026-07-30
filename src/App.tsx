@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ScheduleEvent, FreeSlot, ChildcareGap, AIAnalysisResult, FamilyNames, EventCategory, ActivityLogItem } from './types';
 import { INITIAL_EVENTS, INITIAL_FREE_SLOTS, INITIAL_CHILDCARE_GAPS, INITIAL_FAMILY_NAMES } from './data/initialData';
 import { ensurePostCallRestForEvents } from './utils/rosterUtils';
@@ -95,6 +95,107 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('sunik_gaps', JSON.stringify(childcareGaps));
   }, [childcareGaps]);
+
+  // Real-Time Multi-User Sync Mechanics
+  const clientIdRef = useRef('client-' + Math.random().toString(36).substring(2, 9));
+  const isRemoteUpdateRef = useRef(false);
+  const [isLiveConnected, setIsLiveConnected] = useState(true);
+  const [liveSyncPulse, setLiveSyncPulse] = useState(false);
+  const [liveToastMessage, setLiveToastMessage] = useState<string | null>(null);
+
+  // Sync state helper to broadcast to server
+  const syncStateToServer = async (overrideState?: any) => {
+    if (isRemoteUpdateRef.current) return;
+    try {
+      const payload = overrideState || {
+        events,
+        familyNames,
+        freeSlots,
+        childcareGaps,
+        activityLogs
+      };
+      await fetch('/api/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ state: payload, senderId: clientIdRef.current }),
+      });
+    } catch (err) {
+      console.error('Error syncing state to server:', err);
+    }
+  };
+
+  // Connect to SSE stream for live real-time updates from other users
+  useEffect(() => {
+    let eventSource: EventSource | null = null;
+
+    const connectSSE = () => {
+      eventSource = new EventSource('/api/stream');
+
+      eventSource.onopen = () => {
+        setIsLiveConnected(true);
+      };
+
+      eventSource.onmessage = (event) => {
+        try {
+          const msg = JSON.parse(event.data);
+          if (msg.type === 'INIT' || msg.type === 'LIVE_UPDATE') {
+            if (msg.senderId && msg.senderId === clientIdRef.current) {
+              return; // Ignore broadcast echoing from our own edits
+            }
+
+            const remoteState = msg.data;
+            if (remoteState) {
+              isRemoteUpdateRef.current = true;
+
+              if (remoteState.events) setEvents(remoteState.events);
+              if (remoteState.familyNames) setFamilyNames(remoteState.familyNames);
+              if (remoteState.freeSlots) setFreeSlots(remoteState.freeSlots);
+              if (remoteState.childcareGaps) setChildcareGaps(remoteState.childcareGaps);
+              if (remoteState.activityLogs) setActivityLogs(remoteState.activityLogs);
+
+              setLiveSyncPulse(true);
+              setTimeout(() => setLiveSyncPulse(false), 2000);
+
+              if (msg.type === 'LIVE_UPDATE') {
+                setLiveToastMessage('⚡ Live update: Schedule updated by another family member');
+                setTimeout(() => setLiveToastMessage(null), 4000);
+              }
+
+              setTimeout(() => {
+                isRemoteUpdateRef.current = false;
+              }, 150);
+            } else {
+              // Initial server state empty, seed with current local state
+              syncStateToServer();
+            }
+          }
+        } catch (e) {
+          console.error('Error parsing live stream SSE event:', e);
+        }
+      };
+
+      eventSource.onerror = () => {
+        setIsLiveConnected(false);
+        eventSource?.close();
+        setTimeout(connectSSE, 3000);
+      };
+    };
+
+    connectSSE();
+
+    return () => {
+      eventSource?.close();
+    };
+  }, []);
+
+  // Broadcast state changes automatically whenever events, names, slots, or logs change
+  useEffect(() => {
+    if (isRemoteUpdateRef.current) return;
+    const timer = setTimeout(() => {
+      syncStateToServer();
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [events, familyNames, activityLogs, freeSlots, childcareGaps]);
 
   // Record an action before modifying events
   const recordAction = (
@@ -368,7 +469,17 @@ export default function App() {
         onUndo={handleUndo}
         familyNames={familyNames}
         onOpenEditNames={() => setIsEditNamesModalOpen(true)}
+        isLiveConnected={isLiveConnected}
+        liveSyncPulse={liveSyncPulse}
       />
+
+      {/* Floating Live Sync Toast Notification */}
+      {liveToastMessage && (
+        <div className="fixed bottom-6 right-6 z-50 bg-slate-900/95 text-emerald-300 border border-emerald-500/50 px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-3 text-xs font-bold animate-bounce backdrop-blur-md">
+          <span className="p-1.5 bg-emerald-500/20 rounded-xl text-emerald-400 border border-emerald-500/30">⚡</span>
+          <span>{liveToastMessage}</span>
+        </div>
+      )}
 
       {/* Main Content Area */}
       <main className="max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 space-y-6 flex-1">
