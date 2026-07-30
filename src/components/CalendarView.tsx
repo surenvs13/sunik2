@@ -23,6 +23,7 @@ import {
   Search,
   ShieldAlert,
   RotateCw,
+  Braces,
   Edit3
 } from 'lucide-react';
 
@@ -810,7 +811,7 @@ export const CalendarView: React.FC<Props> = ({
                 </span>
               </div>
               <p className="text-xs text-emerald-200 mt-0.5">
-                Paste WhatsApp messages here to instantly extract lawyer calls, court dates &amp; toddler activities directly onto your calendar
+                Paste natural language WhatsApp messages here to instantly extract lawyer calls, court dates &amp; toddler activities onto your calendar
               </p>
             </div>
           </div>
@@ -829,8 +830,9 @@ export const CalendarView: React.FC<Props> = ({
           <div className="mt-3.5 pt-3 border-t border-emerald-800/80 space-y-3 animate-in fade-in duration-150">
             <div className="flex items-center justify-between">
               <label className="text-xs font-bold text-emerald-100 flex items-center gap-1">
-                <span>Paste Chat Text:</span>
+                <span>Paste Natural Language WhatsApp Chat Messages:</span>
               </label>
+
               <button
                 type="button"
                 onClick={() => setQuickChatText(
@@ -838,7 +840,7 @@ export const CalendarView: React.FC<Props> = ({
                 )}
                 className="text-[11px] font-extrabold text-emerald-300 hover:text-white underline"
               >
-                + Fill Sample Roster &amp; Schedule Chat
+                + Fill Sample Natural Language Chat
               </button>
             </div>
 
@@ -847,7 +849,7 @@ export const CalendarView: React.FC<Props> = ({
               value={quickChatText}
               onChange={(e) => setQuickChatText(e.target.value)}
               placeholder="e.g. 'Nicole: High Court trial from Aug 10 to Aug 14 09:00-16:00. Gerard toddler camp Aug 24-28. Late calls on Aug 18, 19, and 20 from 9pm to 11pm.'"
-              className="w-full px-3.5 py-2.5 text-xs bg-slate-950/80 text-emerald-100 border border-emerald-700/60 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-400 font-mono"
+              className="w-full px-3.5 py-2.5 text-xs bg-slate-950/80 text-emerald-100 border border-emerald-700/60 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-400 font-sans"
             />
 
             <div className="flex flex-wrap items-center justify-between gap-3">

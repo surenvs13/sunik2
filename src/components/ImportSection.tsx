@@ -13,7 +13,8 @@ import {
   Loader2,
   Calendar,
   Check,
-  Plus
+  Plus,
+  Braces
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
@@ -369,23 +370,24 @@ export const ImportSection: React.FC<Props> = ({ onAddEvents, familyNames }) => 
         {/* Tab 2: Nicole WhatsApp Messages */}
         {activeTab === 'whatsapp' && (
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
                 <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
                   <MessageSquare className="w-4 h-4 text-indigo-600" />
-                  Nicole &amp; Family WhatsApp Chat
+                  <span>Nicole &amp; Family Natural Language WhatsApp Chat</span>
                 </h3>
                 <p className="text-xs text-slate-500">
-                  Paste copied WhatsApp messages containing court dates, late night calls, nursery activities, or pediatrician visits
+                  Paste copied WhatsApp messages in plain natural language text containing court dates, late night calls, nursery activities, or pediatrician visits — no JSON required!
                 </p>
               </div>
 
               <button
+                type="button"
                 onClick={() => setWhatsappText(SAMPLE_WHATSAPP_CHAT_TEXT)}
                 className="px-3 py-1.5 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-lg transition-colors flex items-center gap-1.5"
               >
                 <Sparkles className="w-3.5 h-3.5" />
-                <span>Load Sample WhatsApp Chat</span>
+                <span>Load Sample Natural Language Chat</span>
               </button>
             </div>
 
@@ -394,7 +396,7 @@ export const ImportSection: React.FC<Props> = ({ onAddEvents, familyNames }) => 
                 rows={8}
                 value={whatsappText}
                 onChange={(e) => setWhatsappText(e.target.value)}
-                placeholder="Paste WhatsApp messages here... e.g.&#10;Nicole: Mon Aug 3 High Court trial 9am-4:30pm, then late night US call 9:30pm-11:30pm&#10;Nicole: Pediatrician visit Friday Aug 7 at 4pm..."
+                placeholder="Paste natural language WhatsApp messages here... e.g.&#10;Nicole: Mon Aug 3 High Court trial 9am-4:30pm, then late night US call 9:30pm-11:30pm&#10;Nicole: Pediatrician visit Friday Aug 7 at 4pm..."
                 className="w-full px-3.5 py-2.5 text-xs border border-slate-300 rounded-xl font-sans focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
               />
             </div>
@@ -408,12 +410,12 @@ export const ImportSection: React.FC<Props> = ({ onAddEvents, familyNames }) => 
                 {isParsingWhatsapp ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Gemini AI Parsing Chat...</span>
+                    <span>Gemini AI Parsing Natural Language Chat...</span>
                   </>
                 ) : (
                   <>
                     <Sparkles className="w-4 h-4" />
-                    <span>Parse WhatsApp Chat with Gemini AI</span>
+                    <span>Parse Natural Language Chat with Gemini AI</span>
                   </>
                 )}
               </button>

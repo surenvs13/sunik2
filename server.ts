@@ -331,7 +331,7 @@ function parseRosterLocal(text: string, referenceMonthYear?: string, husbandName
   };
 }
 
-// Fallback Rule Parser for WhatsApp Chat
+// Fallback Rule Parser for WhatsApp Chat & JSON Natural Language Input
 function parseWhatsAppLocal(
   chatText: string,
   referenceMonthYear?: string,
@@ -341,10 +341,95 @@ function parseWhatsAppLocal(
 ) {
   const targetYearMonth = referenceMonthYear || "2026-08";
   const events: any[] = [];
-  const lines = (chatText || "").split("\n");
+  let linesToParse: string[] = [];
+  let isJsonInput = false;
+
+  try {
+    const trimmed = (chatText || "").trim();
+    if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
+      const parsed = JSON.parse(trimmed);
+      isJsonInput = true;
+
+      const processJsonItem = (item: any) => {
+        if (typeof item === 'string') {
+          linesToParse.push(item);
+        } else if (typeof item === 'object' && item !== null) {
+          // Check if it already has structured event fields
+          if (item.title || item.category || item.startDate) {
+            const start = item.startDate || item.date || `${targetYearMonth}-01`;
+            const isCall = Boolean(item.isCallDuty) || item.category === 'On-Call 24h';
+            events.push({
+              title: item.title || item.event || 'Family Commitment',
+              person: item.person || item.sender || (isCall ? husbandName : wifeName),
+              category: item.category || (isCall ? 'On-Call 24h' : 'Court Hearing'),
+              startDate: start,
+              startTime: item.startTime || item.time || (isCall ? '08:00' : '09:00'),
+              endDate: item.endDate || (isCall ? start : start),
+              endTime: item.endTime || (isCall ? '00:00' : '17:00'),
+              isCallDuty: isCall,
+              isNightShift: Boolean(item.isNightShift) || isCall,
+              requiresPostCallRest: Boolean(item.requiresPostCallRest) || isCall,
+              location: item.location || '',
+              notes: item.notes || item.message || item.details || '',
+            });
+
+            if (isCall && (item.person === husbandName || !item.person)) {
+              const restDate = addDaysToDateStr(start, 1);
+              events.push({
+                title: "Post-Call Sleep & Recovery",
+                person: husbandName,
+                category: "Post-Call Rest",
+                startDate: restDate,
+                startTime: "08:30",
+                endDate: restDate,
+                endTime: "16:00",
+                isCallDuty: false,
+                isNightShift: false,
+                requiresPostCallRest: true,
+                location: "Home - Master Bedroom",
+                notes: `Mandatory post-call rest following ${item.title || 'On-Call Duty'} on ${start}`,
+              });
+            }
+          } else {
+            // Extract natural language message string from JSON
+            const parts = [
+              item.sender ? `${item.sender}:` : '',
+              item.date || item.timestamp ? `[${item.date || item.timestamp}]` : '',
+              item.message || item.text || item.details || item.content || item.instructions || JSON.stringify(item)
+            ].filter(Boolean);
+            linesToParse.push(parts.join(' '));
+          }
+        }
+      };
+
+      if (Array.isArray(parsed)) {
+        parsed.forEach(processJsonItem);
+      } else if (typeof parsed === 'object' && parsed !== null) {
+        const msgList = parsed.chat_messages || parsed.messages || parsed.events || parsed.items || parsed.schedule || [];
+        if (Array.isArray(msgList) && msgList.length > 0) {
+          msgList.forEach(processJsonItem);
+        } else {
+          Object.entries(parsed).forEach(([k, v]) => {
+            if (typeof v === 'string') {
+              linesToParse.push(`${k}: ${v}`);
+            } else if (typeof v === 'object' && v !== null) {
+              processJsonItem(v);
+            }
+          });
+        }
+      }
+    }
+  } catch (e) {
+    isJsonInput = false;
+  }
+
+  if (linesToParse.length === 0) {
+    linesToParse = (chatText || "").split("\n");
+  }
+
   const dateRegex = /\b(\d{4}-\d{2}-\d{2})\b|\b(?:aug|august|sep|september|jul|july)?\s*(\d{1,2})(?:st|nd|rd|th)?\b/gi;
 
-  lines.forEach((line) => {
+  linesToParse.forEach((line) => {
     if (!line.trim()) return;
     const lower = line.toLowerCase();
 
@@ -439,7 +524,7 @@ function parseWhatsAppLocal(
 
   if (events.length === 0) {
     events.push({
-      title: "Parsed WhatsApp Commitment",
+      title: "Parsed Schedule Commitment",
       person: wifeName,
       category: "Court Hearing",
       startDate: `${targetYearMonth}-12`,
@@ -456,7 +541,7 @@ function parseWhatsAppLocal(
 
   return {
     events,
-    summaryText: `Extracted ${events.length} event(s) from WhatsApp chat using smart pattern engine.`
+    summaryText: `Extracted ${events.length} event(s) from natural language WhatsApp chat text using smart pattern engine.`
   };
 }
 
@@ -635,7 +720,7 @@ ${text || "See attached document/image content."}
   }
 });
 
-// API Endpoint: Parse Family WhatsApp Messages
+// API Endpoint: Parse Family Natural Language WhatsApp Messages
 app.post("/api/parse-whatsapp", async (req, res) => {
   const { chatText, referenceMonthYear, familyNames } = req.body;
   const husbandName = familyNames?.husband || "Suren";
@@ -643,10 +728,10 @@ app.post("/api/parse-whatsapp", async (req, res) => {
   const childName = familyNames?.child || "Gerard (2yo)";
 
   const promptText = `
-You are an intelligent family schedule AI parser. 
-The user pasted WhatsApp chat messages between a Doctor husband (${husbandName}), a Lawyer wife with late night calls (${wifeName}), and activities for their 2-year-old son (${childName}).
+You are an intelligent family schedule AI parser for SUNIK Family Sync. 
+The user provided natural language WhatsApp chat messages between a Doctor husband (${husbandName}), a Lawyer wife with late night calls (${wifeName}), and activities for their 2-year-old son (${childName}).
 
-Parse all mentioned events, commitments, lawyer court dates, late night lawyer calls, pediatrician appointments, playgroups, family outings, and toddler care items for reference period: ${referenceMonthYear || "2026-08"}.
+Parse and extract all mentioned schedule events, commitments, lawyer court dates, late night lawyer calls, pediatrician appointments, playgroups, family outings, and toddler care items from the plain natural language text for reference period: ${referenceMonthYear || "2026-08"}.
 
 Rules:
 1. Identify who each event is for:
@@ -666,7 +751,7 @@ Rules:
    - If a message lists multiple specific dates for an event (e.g. "Late night calls on Aug 10, 12, and 15", "On-call on 5th, 8th, 12th"), generate a separate event item for EACH specified date.
    - If a message specifies recurring weekly days (e.g. "Every Tuesday in August", "Mon to Fri swim class"), generate individual event items for each matching date in the target month.
 
-WhatsApp Text:
+WhatsApp Natural Language Text:
 ${chatText}
 `;
 
