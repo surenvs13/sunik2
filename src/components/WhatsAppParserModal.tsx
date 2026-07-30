@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ScheduleEvent, FamilyNames } from '../types';
 import { SAMPLE_WHATSAPP_CHAT_TEXT } from '../data/initialData';
 import { ensurePostCallRestForEvents } from '../utils/rosterUtils';
+import { parseScheduleEventsJson } from '../utils/scheduleJsonUtils';
 import { 
   MessageSquare, 
   Sparkles, 
@@ -16,7 +17,9 @@ import {
   Clock, 
   Edit2, 
   ArrowRight,
-  Scissors
+  Scissors,
+  FileJson,
+  Upload
 } from 'lucide-react';
 
 interface Props {
@@ -42,13 +45,43 @@ const getDaysBetween = (startStr: string, endStr: string): string[] => {
   return dates;
 };
 
+const SAMPLE_EVENTS_JSON = JSON.stringify({
+  events: [
+    {
+      title: 'High Court Hearing',
+      person: 'Nicole',
+      category: 'Court Hearing',
+      startDate: '2026-08-05',
+      startTime: '09:00',
+      endDate: '2026-08-05',
+      endTime: '16:00',
+      location: 'High Court',
+      notes: 'Commercial case hearing'
+    },
+    {
+      title: 'Hospital On-Call Duty',
+      person: 'Suren',
+      category: 'On-Call 24h',
+      startDate: '2026-08-08',
+      startTime: '08:00',
+      endDate: '2026-08-08',
+      endTime: '00:00',
+      isCallDuty: true,
+      requiresPostCallRest: true
+    }
+  ]
+}, null, 2);
+
 export const WhatsAppParserModal: React.FC<Props> = ({
   isOpen,
   onClose,
   onAddEvents,
   familyNames
 }) => {
+  const [inputMode, setInputMode] = useState<'chat' | 'json'>('chat');
   const [chatText, setChatText] = useState('');
+  const [jsonText, setJsonText] = useState('');
+  const [jsonFileName, setJsonFileName] = useState('');
   const [referenceMonthYear, setReferenceMonthYear] = useState('2026-08');
   const [isParsing, setIsParsing] = useState(false);
   const [extractedEvents, setExtractedEvents] = useState<ScheduleEvent[]>([]);
@@ -86,28 +119,7 @@ export const WhatsAppParserModal: React.FC<Props> = ({
         throw new Error(json.error || 'Failed to parse WhatsApp chat.');
       }
 
-      const parsed: ScheduleEvent[] = (json.data.events || []).map((ev: any, idx: number) => {
-        const start = ev.startDate || `${referenceMonthYear}-01`;
-        const isCall = Boolean(ev.isCallDuty) || ev.category === 'On-Call 24h' || ev.category === 'Night Shift';
-        // For 24h call duty, enforce endDate = start so call duty is strictly reflected on the call day in calendar!
-        const end = isCall ? start : (ev.endDate || start);
-        return {
-          id: `extracted-wa-${Date.now()}-${idx}`,
-          title: ev.title || 'Family Commitment',
-          person: ev.person || (isCall ? familyNames.husband : familyNames.wife),
-          category: ev.category || (isCall ? 'On-Call 24h' : 'Court Hearing'),
-          startDate: start,
-          startTime: ev.startTime || (isCall ? '08:30' : '09:00'),
-          endDate: end,
-          endTime: ev.endTime || (isCall ? '08:30' : '17:00'),
-          isCallDuty: isCall,
-          isNightShift: Boolean(ev.isNightShift) || isCall,
-          requiresPostCallRest: Boolean(ev.requiresPostCallRest) || isCall,
-          location: ev.location || '',
-          notes: ev.notes || '',
-          source: 'wife_whatsapp'
-        };
-      });
+      const parsed = parseScheduleEventsJson(JSON.stringify(json.data), familyNames, 'extracted-wa');
 
       const withRest = ensurePostCallRestForEvents(parsed, familyNames.husband);
 
@@ -265,6 +277,46 @@ export const WhatsAppParserModal: React.FC<Props> = ({
     setSuccessMessage('');
   };
 
+  const loadJsonSample = () => {
+    setJsonText(SAMPLE_EVENTS_JSON);
+    setJsonFileName('');
+    setErrorMessage('');
+    setSuccessMessage('');
+  };
+
+  const handleJsonFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setJsonText(await file.text());
+      setJsonFileName(file.name);
+      setErrorMessage('');
+      setSuccessMessage(`Loaded ${file.name}. Review the JSON, then import it.`);
+    } catch {
+      setErrorMessage('Could not read that JSON file.');
+    }
+  };
+
+  const handleJsonImport = () => {
+    if (!jsonText.trim()) {
+      setErrorMessage('Paste schedule JSON or choose a .json file first.');
+      return;
+    }
+
+    try {
+      const parsed = parseScheduleEventsJson(jsonText, familyNames);
+      const withRest = ensurePostCallRestForEvents(parsed, familyNames.husband);
+      setExtractedEvents(withRest);
+      setSelectedIds(new Set(withRest.map((event) => event.id)));
+      setErrorMessage('');
+      setSuccessMessage(`Validated ${withRest.length} JSON schedule items. Review and add the selected items below.`);
+    } catch (error) {
+      setSuccessMessage('');
+      setErrorMessage(error instanceof Error ? error.message : 'Could not import schedule JSON.');
+    }
+  };
+
   const multiDayItemsCount = extractedEvents.filter((e) => e.startDate !== e.endDate).length;
 
   return (
@@ -299,6 +351,29 @@ export const WhatsAppParserModal: React.FC<Props> = ({
 
         {/* Content Body */}
         <div className="p-6 space-y-4">
+          <div className="grid grid-cols-2 gap-2 rounded-2xl bg-slate-100 p-1.5 border border-slate-200">
+            <button
+              type="button"
+              onClick={() => setInputMode('chat')}
+              className={`px-4 py-2.5 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 ${
+                inputMode === 'chat' ? 'bg-white text-emerald-800 shadow-sm border border-emerald-200' : 'text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              <MessageSquare className="w-4 h-4" />
+              Parse WhatsApp Text
+            </button>
+            <button
+              type="button"
+              onClick={() => setInputMode('json')}
+              className={`px-4 py-2.5 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 ${
+                inputMode === 'json' ? 'bg-white text-sky-800 shadow-sm border border-sky-200' : 'text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              <FileJson className="w-4 h-4" />
+              Import Schedule JSON
+            </button>
+          </div>
+
           {/* Controls Bar */}
           <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-50 p-3 rounded-2xl border border-slate-200">
             <div className="flex items-center gap-2">
@@ -312,18 +387,28 @@ export const WhatsAppParserModal: React.FC<Props> = ({
               />
             </div>
 
-            <button
-              type="button"
-              onClick={loadSample}
-              className="px-3 py-1.5 text-xs font-extrabold bg-emerald-50 text-emerald-800 hover:bg-emerald-100 rounded-xl border border-emerald-200 transition-colors flex items-center gap-1.5"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
-              <span>Load Sample Chat with Date Ranges</span>
-            </button>
+            {inputMode === 'chat' ? (
+              <button
+                type="button"
+                onClick={loadSample}
+                className="px-3 py-1.5 text-xs font-extrabold bg-emerald-50 text-emerald-800 hover:bg-emerald-100 rounded-xl border border-emerald-200 transition-colors flex items-center gap-1.5"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Load Sample Chat with Date Ranges</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={loadJsonSample}
+                className="px-3 py-1.5 text-xs font-extrabold bg-sky-50 text-sky-800 hover:bg-sky-100 rounded-xl border border-sky-200 transition-colors flex items-center gap-1.5"
+              >
+                <FileJson className="w-3.5 h-3.5 text-sky-600" />
+                <span>Load Sample JSON</span>
+              </button>
+            )}
           </div>
 
-          {/* Text Area */}
-          <div>
+          {inputMode === 'chat' ? <div>
             <div className="flex items-center justify-between mb-1.5">
               <label className="text-xs font-extrabold text-slate-800 flex items-center gap-1.5">
                 <MessageSquare className="w-4 h-4 text-emerald-600" />
@@ -346,11 +431,35 @@ export const WhatsAppParserModal: React.FC<Props> = ({
               placeholder="e.g. 'Nicole: High Court Trial from Aug 10 to Aug 14 09:00-16:00. Gerard toddler camp Aug 24-28. Late calls on Aug 18, 19, and 20 from 9pm to 11pm.'"
               className="w-full px-4 py-3 text-xs border border-slate-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500 font-mono bg-slate-50/50"
             />
-          </div>
+          </div> : (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <label className="text-xs font-extrabold text-slate-800 flex items-center gap-1.5">
+                  <FileJson className="w-4 h-4 text-sky-600" />
+                  <span>Paste JSON or upload a file</span>
+                </label>
+                <label className="cursor-pointer px-3 py-1.5 text-[11px] font-extrabold bg-white text-sky-800 hover:bg-sky-50 rounded-xl border border-sky-200 transition-colors flex items-center gap-1.5">
+                  <Upload className="w-3.5 h-3.5" />
+                  <span>{jsonFileName || 'Choose .json file'}</span>
+                  <input type="file" accept="application/json,.json" onChange={handleJsonFile} className="hidden" />
+                </label>
+              </div>
+              <textarea
+                rows={9}
+                value={jsonText}
+                onChange={(event) => setJsonText(event.target.value)}
+                placeholder={'{\n  "events": [\n    {\n      "title": "Court Hearing",\n      "person": "Nicole",\n      "category": "Court Hearing",\n      "startDate": "2026-08-05",\n      "startTime": "09:00",\n      "endDate": "2026-08-05",\n      "endTime": "16:00"\n    }\n  ]\n}'}
+                className="w-full px-4 py-3 text-xs border border-sky-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-sky-500 font-mono bg-sky-50/40"
+              />
+              <p className="text-[11px] text-slate-500">
+                Accepted shapes: a raw event array, <code>{'{ "events": [...] }'}</code>, or an API response containing <code>data.events</code>.
+              </p>
+            </div>
+          )}
 
           {/* Parse Button */}
           <div className="flex justify-end">
-            <button
+            {inputMode === 'chat' ? <button
               type="button"
               disabled={isParsing || !chatText.trim()}
               onClick={handleParse}
@@ -367,7 +476,17 @@ export const WhatsAppParserModal: React.FC<Props> = ({
                   <span>Extract Schedule &amp; Ranges with Gemini AI</span>
                 </>
               )}
-            </button>
+            </button> : (
+              <button
+                type="button"
+                disabled={!jsonText.trim()}
+                onClick={handleJsonImport}
+                className="w-full sm:w-auto px-6 py-2.5 text-xs font-black text-white bg-sky-600 hover:bg-sky-700 disabled:opacity-50 rounded-xl shadow-md transition-all flex items-center justify-center gap-2"
+              >
+                <FileJson className="w-4 h-4" />
+                <span>Validate &amp; Preview JSON Events</span>
+              </button>
+            )}
           </div>
 
           {/* Messages */}
