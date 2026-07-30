@@ -61,7 +61,7 @@ export const WhatsAppParserModal: React.FC<Props> = ({
 
   const handleParse = async () => {
     if (!chatText.trim()) {
-      setErrorMessage('Please paste or type WhatsApp chat text to parse.');
+      setErrorMessage('Please paste or type WhatsApp chat messages in natural language to parse.');
       return;
     }
 
@@ -116,9 +116,9 @@ export const WhatsAppParserModal: React.FC<Props> = ({
 
       const multiDayCount = withRest.filter((p) => p.startDate !== p.endDate).length;
       if (multiDayCount > 0) {
-        setSuccessMessage(`Extracted ${withRest.length} schedule items (including ${multiDayCount} multi-day date range events and post-call rest)!`);
+        setSuccessMessage(`Extracted ${withRest.length} schedule items (including ${multiDayCount} multi-day date range events and post-call rest) from natural language chat!`);
       } else {
-        setSuccessMessage(`Successfully extracted ${withRest.length} schedule items and post-call rest windows!`);
+        setSuccessMessage(`Successfully extracted ${withRest.length} schedule items and post-call rest windows from natural language chat!`);
       }
     } catch (err: any) {
       setErrorMessage(err.message || 'Error parsing chat text with AI.');
@@ -259,7 +259,7 @@ export const WhatsAppParserModal: React.FC<Props> = ({
     }, 1200);
   };
 
-  const loadSample = () => {
+  const loadSampleChat = () => {
     setChatText(SAMPLE_WHATSAPP_CHAT_TEXT);
     setErrorMessage('');
     setSuccessMessage('');
@@ -278,13 +278,13 @@ export const WhatsAppParserModal: React.FC<Props> = ({
             </div>
             <div>
               <h3 className="text-base font-black text-white flex items-center gap-2">
-                <span>WhatsApp Chat Schedule Parser</span>
+                <span>WhatsApp Natural Language Schedule Parser</span>
                 <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 bg-emerald-500/30 text-emerald-300 rounded-full border border-emerald-400/30">
-                  Multi-Day &amp; Range Support
+                  100% Natural Language
                 </span>
               </h3>
               <p className="text-xs text-emerald-200">
-                Extract court dates, late-night lawyer calls, multi-day trials &amp; toddler camps from chat messages
+                Communicate naturally in plain chat text — no JSON formatting required!
               </p>
             </div>
           </div>
@@ -314,11 +314,11 @@ export const WhatsAppParserModal: React.FC<Props> = ({
 
             <button
               type="button"
-              onClick={loadSample}
+              onClick={loadSampleChat}
               className="px-3 py-1.5 text-xs font-extrabold bg-emerald-50 text-emerald-800 hover:bg-emerald-100 rounded-xl border border-emerald-200 transition-colors flex items-center gap-1.5"
             >
               <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
-              <span>Load Sample Chat with Date Ranges</span>
+              <span>Load Sample Natural Language Chat</span>
             </button>
           </div>
 
@@ -327,8 +327,9 @@ export const WhatsAppParserModal: React.FC<Props> = ({
             <div className="flex items-center justify-between mb-1.5">
               <label className="text-xs font-extrabold text-slate-800 flex items-center gap-1.5">
                 <MessageSquare className="w-4 h-4 text-emerald-600" />
-                <span>Paste WhatsApp Chat Messages</span>
+                <span>Paste Natural Language WhatsApp Chat Messages</span>
               </label>
+
               {chatText.length > 0 && (
                 <button
                   onClick={() => setChatText('')}
@@ -340,11 +341,11 @@ export const WhatsAppParserModal: React.FC<Props> = ({
             </div>
 
             <textarea
-              rows={4}
+              rows={5}
               value={chatText}
               onChange={(e) => setChatText(e.target.value)}
-              placeholder="e.g. 'Nicole: High Court Trial from Aug 10 to Aug 14 09:00-16:00. Gerard toddler camp Aug 24-28. Late calls on Aug 18, 19, and 20 from 9pm to 11pm.'"
-              className="w-full px-4 py-3 text-xs border border-slate-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500 font-mono bg-slate-50/50"
+              placeholder="Type or paste plain text chat messages... e.g. 'Nicole: High Court Trial from Aug 10 to Aug 14 09:00-16:00. Gerard toddler camp Aug 24-28. Late calls on Aug 18, 19, and 20 from 9pm to 11pm.'"
+              className="w-full px-4 py-3 text-xs border border-slate-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500 font-sans bg-slate-50/50 text-slate-800"
             />
           </div>
 
@@ -359,12 +360,12 @@ export const WhatsAppParserModal: React.FC<Props> = ({
               {isParsing ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin text-white" />
-                  <span>Gemini AI Extracting Multi-Day Roster &amp; Schedule...</span>
+                  <span>Gemini AI Parsing Natural Language Chat...</span>
                 </>
               ) : (
                 <>
                   <Sparkles className="w-4 h-4" />
-                  <span>Extract Schedule &amp; Ranges with Gemini AI</span>
+                  <span>Extract Schedule with Gemini AI</span>
                 </>
               )}
             </button>
