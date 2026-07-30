@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ScheduleEvent, FreeSlot, ChildcareGap, AIAnalysisResult, FamilyNames, EventCategory, ActivityLogItem } from './types';
 import { INITIAL_EVENTS, INITIAL_FREE_SLOTS, INITIAL_CHILDCARE_GAPS, INITIAL_FAMILY_NAMES } from './data/initialData';
 import { ensurePostCallRestForEvents } from './utils/rosterUtils';
@@ -12,6 +12,12 @@ import { AddEventModal } from './components/AddEventModal';
 import { EditFamilyModal } from './components/EditFamilyModal';
 import { WhatsAppParserModal } from './components/WhatsAppParserModal';
 import { Trash2 } from 'lucide-react';
+
+type CalendarSyncResponse = {
+  initialized: boolean;
+  events: ScheduleEvent[];
+  updatedAt: string | null;
+};
 
 export default function App() {
   // Family Names state with LocalStorage Persistence
@@ -74,6 +80,10 @@ export default function App() {
   const [modalInitialDate, setModalInitialDate] = useState<string | undefined>(undefined);
   const [modalInitialCategory, setModalInitialCategory] = useState<EventCategory | undefined>(undefined);
   const [editingEvent, setEditingEvent] = useState<ScheduleEvent | null>(null);
+  const [calendarSyncStatus, setCalendarSyncStatus] = useState<'loading' | 'synced' | 'saving' | 'offline'>('loading');
+  const eventsRef = useRef(events);
+  const pendingWritesRef = useRef(0);
+  const saveChainRef = useRef<Promise<void>>(Promise.resolve());
 
   // Sync to localStorage
   useEffect(() => {
@@ -82,6 +92,7 @@ export default function App() {
 
   useEffect(() => {
     localStorage.setItem('sunik_events', JSON.stringify(events));
+    eventsRef.current = events;
   }, [events]);
 
   useEffect(() => {
@@ -95,6 +106,83 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('sunik_gaps', JSON.stringify(childcareGaps));
   }, [childcareGaps]);
+
+  const replaceLocalEvents = useCallback((nextEvents: ScheduleEvent[]) => {
+    eventsRef.current = nextEvents;
+    setEvents(nextEvents);
+  }, []);
+
+  const commitEvents = useCallback((
+    updater: (current: ScheduleEvent[]) => ScheduleEvent[],
+    baseEventsOverride?: ScheduleEvent[],
+  ) => {
+    const currentEvents = eventsRef.current;
+    const baseEvents = baseEventsOverride ?? currentEvents;
+    const nextEvents = updater(currentEvents);
+    replaceLocalEvents(nextEvents);
+    pendingWritesRef.current += 1;
+    setCalendarSyncStatus('saving');
+
+    saveChainRef.current = saveChainRef.current
+      .catch(() => undefined)
+      .then(async () => {
+        const response = await fetch('/api/calendar', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ baseEvents, events: nextEvents }),
+        });
+
+        if (!response.ok) throw new Error('Unable to save the shared calendar');
+        const sharedCalendar = await response.json() as CalendarSyncResponse;
+        if (eventsRef.current === nextEvents) {
+          replaceLocalEvents(sharedCalendar.events);
+        }
+      })
+      .then(() => {
+        pendingWritesRef.current -= 1;
+        setCalendarSyncStatus(pendingWritesRef.current > 0 ? 'saving' : 'synced');
+      })
+      .catch((error) => {
+        pendingWritesRef.current = Math.max(0, pendingWritesRef.current - 1);
+        console.error('Calendar sync failed:', error);
+        setCalendarSyncStatus('offline');
+      });
+  }, [replaceLocalEvents]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadSharedCalendar = async () => {
+      if (pendingWritesRef.current > 0) return;
+
+      try {
+        const response = await fetch('/api/calendar', { cache: 'no-store' });
+        if (!response.ok) throw new Error('Unable to load the shared calendar');
+        const sharedCalendar = await response.json() as CalendarSyncResponse;
+        if (cancelled) return;
+
+        if (!sharedCalendar.initialized) {
+          commitEvents((currentEvents) => currentEvents, []);
+          return;
+        }
+
+        replaceLocalEvents(sharedCalendar.events);
+        setCalendarSyncStatus('synced');
+      } catch (error) {
+        if (cancelled) return;
+        console.error('Calendar refresh failed:', error);
+        setCalendarSyncStatus('offline');
+      }
+    };
+
+    loadSharedCalendar();
+    const refreshTimer = window.setInterval(loadSharedCalendar, 2000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(refreshTimer);
+    };
+  }, [commitEvents, replaceLocalEvents]);
 
   // Record an action before modifying events
   const recordAction = (
@@ -122,7 +210,7 @@ export default function App() {
   const handleUndo = () => {
     if (undoStack.length > 0) {
       const previousEvents = undoStack[undoStack.length - 1];
-      setEvents(previousEvents);
+      commitEvents(() => previousEvents);
       setUndoStack((prev) => prev.slice(0, -1));
       
       const undoLog: ActivityLogItem = {
@@ -135,7 +223,7 @@ export default function App() {
       };
       setActivityLogs((prev) => [undoLog, ...prev]);
     } else if (activityLogs.length > 0 && activityLogs[0].previousEventsSnapshot) {
-      setEvents(activityLogs[0].previousEventsSnapshot);
+      commitEvents(() => activityLogs[0].previousEventsSnapshot);
       const undoLog: ActivityLogItem = {
         id: `log-undo-${Date.now()}`,
         timestamp: new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
@@ -152,7 +240,7 @@ export default function App() {
     const targetLog = activityLogs.find((l) => l.id === logId);
     if (targetLog && targetLog.previousEventsSnapshot) {
       setUndoStack((prev) => [...prev, events]);
-      setEvents(targetLog.previousEventsSnapshot);
+      commitEvents(() => targetLog.previousEventsSnapshot);
       const undoLog: ActivityLogItem = {
         id: `log-revert-${Date.now()}`,
         timestamp: new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
@@ -205,7 +293,7 @@ export default function App() {
 
     setFamilyNames(newNames);
 
-    setEvents((prev) =>
+    commitEvents((prev) =>
       prev.map((e) => {
         if (e.person === oldHusband || e.person === 'Dr. Husband') {
           return { ...e, person: newNames.husband };
@@ -228,7 +316,7 @@ export default function App() {
     const person = newEvents.length === 1 ? newEvents[0].person : 'Family';
     const date = newEvents.length === 1 ? newEvents[0].startDate : `${newEvents[0].startDate} onwards`;
     recordAction('BATCH_ADD', `Added ${newEvents.length > 1 ? `${newEvents.length} events` : `event: "${title}"`}`, person, title, date);
-    setEvents((prev) => ensurePostCallRestForEvents([...prev, ...newEvents], familyNames.husband));
+    commitEvents((prev) => ensurePostCallRestForEvents([...prev, ...newEvents], familyNames.husband));
   };
 
   // Save Single Event (Add or Edit)
@@ -242,7 +330,7 @@ export default function App() {
       savedEvent.startDate
     );
 
-    setEvents((prev) => {
+    commitEvents((prev) => {
       const exists = prev.some((e) => e.id === savedEvent.id);
       let updated = exists ? prev.map((e) => (e.id === savedEvent.id ? savedEvent : e)) : [...prev, savedEvent];
       if (additionalEvents && additionalEvents.length > 0) {
@@ -264,7 +352,7 @@ export default function App() {
         target.startDate
       );
     }
-    setEvents((prev) => prev.filter((e) => e.id !== id));
+    commitEvents((prev) => prev.filter((e) => e.id !== id));
   };
 
   // Delete All Events
@@ -277,7 +365,7 @@ export default function App() {
       'All Events',
       'All'
     );
-    setEvents([]);
+    commitEvents(() => []);
     setIsDeleteAllModalOpen(false);
   };
 
@@ -313,7 +401,7 @@ export default function App() {
     );
 
     const callIdsToRemove = new Set(callDutiesInMonth.map((c) => c.id));
-    setEvents((prev) => prev.filter((e) => !callIdsToRemove.has(e.id)));
+    commitEvents((prev) => prev.filter((e) => !callIdsToRemove.has(e.id)));
 
     return callDutiesInMonth.length;
   };
@@ -341,7 +429,7 @@ export default function App() {
   const handleResetDemoData = () => {
     recordAction('RESET', 'Reset schedule to initial sample roster data', 'All', 'Sample Roster', '2026-08-01');
     setFamilyNames(INITIAL_FAMILY_NAMES);
-    setEvents(INITIAL_EVENTS);
+    commitEvents(() => INITIAL_EVENTS);
     setFreeSlots(INITIAL_FREE_SLOTS);
     setChildcareGaps(INITIAL_CHILDCARE_GAPS);
     setAnalysisResult(null);
@@ -443,8 +531,9 @@ export default function App() {
           <div>
             <strong className="text-slate-800">MedFamily Sync</strong> — Hospital Doctor &amp; Lawyer Family Schedule Alignment System
           </div>
-          <div className="text-slate-400">
-            Powered by Gemini AI Server-Side Extraction Engine
+          <div className="text-slate-400 flex items-center gap-2">
+            <span className={`inline-block h-2 w-2 rounded-full ${calendarSyncStatus === 'offline' ? 'bg-rose-500' : calendarSyncStatus === 'saving' || calendarSyncStatus === 'loading' ? 'bg-amber-400' : 'bg-emerald-500'}`} />
+            {calendarSyncStatus === 'offline' ? 'Shared calendar reconnecting' : calendarSyncStatus === 'saving' ? 'Saving shared changes' : calendarSyncStatus === 'loading' ? 'Loading shared calendar' : 'Shared calendar live'}
           </div>
         </div>
       </footer>
