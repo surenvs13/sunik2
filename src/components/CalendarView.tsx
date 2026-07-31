@@ -187,8 +187,8 @@ export const CalendarView: React.FC<Props> = ({
       return conflicts.length === 0;
     };
 
-    // 1. Find 3 Date Night Recs (Zero conflicts for Suren & Nicole)
-    for (let i = 0; i < daysInMonth && dateNightRecs.length < 3; i++) {
+    // 1. Find 5 Date Night Recs (Zero conflicts for Suren & Nicole)
+    for (let i = 0; i < daysInMonth && dateNightRecs.length < 5; i++) {
       const dayNum = ((i + seed) % daysInMonth) + 1;
       const dateStr = `${monthPrefix}-${String(dayNum).padStart(2, '0')}`;
 
@@ -218,10 +218,10 @@ export const CalendarView: React.FC<Props> = ({
       }
     }
 
-    // Fallback if month is busy: test alternate evening windows (19:00 - 21:00, 20:00 - 22:00)
-    if (dateNightRecs.length < 3) {
-      const altTimes = ['19:00 - 21:00', '19:30 - 21:30', '20:00 - 22:00'];
-      for (let d = 1; d <= daysInMonth && dateNightRecs.length < 3; d++) {
+    // Fallback if month is busy: test alternate evening windows (19:00 - 21:00, 19:30 - 21:30, 20:00 - 22:00, 18:30 - 21:00)
+    if (dateNightRecs.length < 5) {
+      const altTimes = ['19:00 - 21:00', '19:30 - 21:30', '20:00 - 22:00', '18:30 - 21:00'];
+      for (let d = 1; d <= daysInMonth && dateNightRecs.length < 5; d++) {
         const dateStr = `${monthPrefix}-${String(d).padStart(2, '0')}`;
         if (dateNightRecs.some((r) => r.date === dateStr)) continue;
 

@@ -482,7 +482,7 @@ function analyzeScheduleLocal(
       score: 9.5
     },
     {
-      title: `Post-Call Evening Romance`,
+      title: `Post-Call Evening Romance & Fine Dining`,
       type: "couple_date",
       date: `${targetYearMonth}-14`,
       startTime: "19:00",
@@ -490,6 +490,16 @@ function analyzeScheduleLocal(
       durationHours: 3,
       reason: `${husbandName} has completed daytime post-call recovery sleep; evening is clear before next shift.`,
       score: 9.0
+    },
+    {
+      title: `Japanese Omakase Couple Night`,
+      type: "couple_date",
+      date: `${targetYearMonth}-18`,
+      startTime: "19:45",
+      endTime: "22:15",
+      durationHours: 2.5,
+      reason: `Quiet weekday evening free of court calls or hospital duties for ${husbandName} & ${wifeName}.`,
+      score: 9.6
     },
     {
       title: `Weekend Couple Sunset Dinner`,
@@ -500,6 +510,16 @@ function analyzeScheduleLocal(
       durationHours: 3,
       reason: `No hospital call or court prep scheduled. High vitality quality window.`,
       score: 9.8
+    },
+    {
+      title: `Seafood Fine Dining & Cocktails`,
+      type: "couple_date",
+      date: `${targetYearMonth}-28`,
+      startTime: "19:30",
+      endTime: "22:00",
+      durationHours: 2.5,
+      reason: `Relaxing Friday date night after week's work and nursery camp completes.`,
+      score: 9.7
     },
     {
       title: `Sunday Morning Family Worship & Brunch`,
@@ -696,13 +716,14 @@ CRITICAL RULES FOR DATE NIGHTS & POST-CALL EVENINGS:
 1. EVENING PLANS ON POST-CALL DAYS ARE EXPLICITLY ALLOWED AND ENCOURAGED:
    - ${husbandName}'s post-call recovery sleep takes place during daytime hours (08:30 to 16:00/17:00).
    - EVENINGS (after 18:00 / 6:00 PM) on post-call days are FULLY AVAILABLE for evening family plans, dinner, or couple date nights! Do NOT treat post-call evenings as locked sleep time.
-2. AT LEAST 3 DATE NIGHT RECOMMENDATIONS PER MONTH:
-   - You MUST identify and recommend AT LEAST 3 high-scoring Couple Date Night slots ('couple_date') for ${husbandName} and ${wifeName} in the given month!
+2. RECOMMENDATIONS REQUIREMENT:
+   - You MUST identify and recommend AT LEAST 5 high-scoring Couple Date Night slots ('couple_date') for ${husbandName} and ${wifeName} in the given month!
+   - You MUST identify and recommend AT LEAST 3 high-scoring Quality Family Outings ('quality_family') for ${husbandName}, ${wifeName}, and ${childName}!
    - Ideal date night slots are evenings (19:30 - 22:30) after ${childName} is asleep, including post-call evenings (after 18:30), and weekday/weekend evenings with no late-night work calls.
 
 Identify top free timing slots ONLY for:
-- Couple Date Night ('couple_date' - MUST HAVE AT LEAST 3 SLOTS PER MONTH)
-- Quality Family Time ('quality_family' - Both parents free, ${childName} awake 08:00-19:30)
+- Couple Date Night ('couple_date' - MUST HAVE AT LEAST 5 SLOTS PER MONTH)
+- Quality Family Time ('quality_family' - MUST HAVE AT LEAST 3 SLOTS PER MONTH)
 Do NOT return solo rest slots.
 
 Highlight any Childcare Coverage Gaps (where both Dad is on call/night duty and Mom has late night lawyer calls/court hearings during toddler hours).

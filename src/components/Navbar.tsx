@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { FamilyNames } from '../types';
 import { 
   Stethoscope, 
@@ -8,7 +8,9 @@ import {
   Clock, 
   Upload, 
   RotateCcw,
-  History
+  History,
+  Share2,
+  Check
 } from 'lucide-react';
 
 interface Props {
@@ -40,6 +42,14 @@ export const Navbar: React.FC<Props> = ({
   isLiveConnected = true,
   liveSyncPulse = false
 }) => {
+  const [copiedLink, setCopiedLink] = useState(false);
+
+  const handleCopyShareLink = () => {
+    navigator.clipboard.writeText(window.location.href);
+    setCopiedLink(true);
+    setTimeout(() => setCopiedLink(false), 2500);
+  };
+
   return (
     <header className="bg-slate-900 text-white border-b border-slate-800 relative md:sticky md:top-0 z-40">
       {/* Top Brand & Stats Bar */}
@@ -111,6 +121,16 @@ export const Navbar: React.FC<Props> = ({
               {liveSyncPulse ? '⚡ Live Sync Updated!' : isLiveConnected ? 'Live Sync Active' : 'Connecting Sync...'}
             </span>
           </div>
+
+          {/* Share Calendar Link Button */}
+          <button
+            onClick={handleCopyShareLink}
+            className="px-3 py-1.5 text-xs font-extrabold text-sky-200 bg-sky-950/80 hover:bg-sky-900 border border-sky-500/40 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
+            title="Copy shared calendar link for other users to view and edit live"
+          >
+            {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Share2 className="w-3.5 h-3.5 text-sky-400" />}
+            <span>{copiedLink ? 'Link Copied!' : 'Share Calendar'}</span>
+          </button>
 
           <div className="bg-slate-800/80 px-3 py-1.5 rounded-xl border border-slate-700/80 flex items-center gap-2">
             <Stethoscope className="w-3.5 h-3.5 text-red-400" />

@@ -99,6 +99,7 @@ export default function App() {
   // Real-Time Multi-User Sync Mechanics
   const clientIdRef = useRef('client-' + Math.random().toString(36).substring(2, 9));
   const isRemoteUpdateRef = useRef(false);
+  const [hasLoadedServerState, setHasLoadedServerState] = useState(false);
   const [isLiveConnected, setIsLiveConnected] = useState(true);
   const [liveSyncPulse, setLiveSyncPulse] = useState(false);
   const [liveToastMessage, setLiveToastMessage] = useState<string | null>(null);
@@ -124,7 +125,56 @@ export default function App() {
     }
   };
 
-  // Connect to SSE stream for live real-time updates from other users
+  // 1. Initial hydration: Fetch shared calendar state from server on mount
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchInitialServerState = async () => {
+      try {
+        const res = await fetch('/api/state');
+        const json = await res.json();
+        if (isMounted && json.success && json.data) {
+          const remoteState = json.data;
+          if (remoteState && remoteState.events && Array.isArray(remoteState.events)) {
+            isRemoteUpdateRef.current = true;
+            setEvents(remoteState.events);
+            if (remoteState.familyNames) setFamilyNames(remoteState.familyNames);
+            if (remoteState.freeSlots) setFreeSlots(remoteState.freeSlots);
+            if (remoteState.childcareGaps) setChildcareGaps(remoteState.childcareGaps);
+            if (remoteState.activityLogs) setActivityLogs(remoteState.activityLogs);
+
+            // Sync to local storage
+            localStorage.setItem('sunik_events', JSON.stringify(remoteState.events));
+            if (remoteState.familyNames) localStorage.setItem('sunik_names', JSON.stringify(remoteState.familyNames));
+            if (remoteState.activityLogs) localStorage.setItem('sunik_activity_logs', JSON.stringify(remoteState.activityLogs));
+            if (remoteState.freeSlots) localStorage.setItem('sunik_free_slots', JSON.stringify(remoteState.freeSlots));
+            if (remoteState.childcareGaps) localStorage.setItem('sunik_gaps', JSON.stringify(remoteState.childcareGaps));
+
+            setTimeout(() => {
+              isRemoteUpdateRef.current = false;
+            }, 200);
+          } else {
+            // Server store empty; initialize server store with default state
+            syncStateToServer();
+          }
+        } else {
+          syncStateToServer();
+        }
+      } catch (err) {
+        console.error('Failed to fetch initial server state:', err);
+      } finally {
+        if (isMounted) setHasLoadedServerState(true);
+      }
+    };
+
+    fetchInitialServerState();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // 2. Connect to SSE stream for live real-time updates from other users
   useEffect(() => {
     let eventSource: EventSource | null = null;
 
@@ -144,29 +194,30 @@ export default function App() {
             }
 
             const remoteState = msg.data;
-            if (remoteState) {
+            if (remoteState && remoteState.events && Array.isArray(remoteState.events)) {
               isRemoteUpdateRef.current = true;
 
-              if (remoteState.events) setEvents(remoteState.events);
+              setEvents(remoteState.events);
               if (remoteState.familyNames) setFamilyNames(remoteState.familyNames);
               if (remoteState.freeSlots) setFreeSlots(remoteState.freeSlots);
               if (remoteState.childcareGaps) setChildcareGaps(remoteState.childcareGaps);
               if (remoteState.activityLogs) setActivityLogs(remoteState.activityLogs);
 
+              // Update local storage
+              localStorage.setItem('sunik_events', JSON.stringify(remoteState.events));
+              if (remoteState.familyNames) localStorage.setItem('sunik_names', JSON.stringify(remoteState.familyNames));
+
               setLiveSyncPulse(true);
               setTimeout(() => setLiveSyncPulse(false), 2000);
 
               if (msg.type === 'LIVE_UPDATE') {
-                setLiveToastMessage('⚡ Live update: Schedule updated by another family member');
+                setLiveToastMessage('⚡ Live update: Shared calendar updated by another user');
                 setTimeout(() => setLiveToastMessage(null), 4000);
               }
 
               setTimeout(() => {
                 isRemoteUpdateRef.current = false;
-              }, 150);
-            } else {
-              // Initial server state empty, seed with current local state
-              syncStateToServer();
+              }, 200);
             }
           }
         } catch (e) {
@@ -188,14 +239,52 @@ export default function App() {
     };
   }, []);
 
-  // Broadcast state changes automatically whenever events, names, slots, or logs change
+  // 3. Fallback Periodic Polling to keep all devices/browsers synchronized seamlessly
   useEffect(() => {
-    if (isRemoteUpdateRef.current) return;
+    if (!hasLoadedServerState) return;
+
+    const pollInterval = setInterval(async () => {
+      try {
+        const res = await fetch('/api/state');
+        const json = await res.json();
+        if (json.success && json.data && json.data.events && Array.isArray(json.data.events)) {
+          const remoteState = json.data;
+          const remoteStr = JSON.stringify(remoteState.events);
+          const localStr = JSON.stringify(events);
+
+          if (remoteStr !== localStr && !isRemoteUpdateRef.current) {
+            isRemoteUpdateRef.current = true;
+            setEvents(remoteState.events);
+            if (remoteState.familyNames) setFamilyNames(remoteState.familyNames);
+            if (remoteState.freeSlots) setFreeSlots(remoteState.freeSlots);
+            if (remoteState.childcareGaps) setChildcareGaps(remoteState.childcareGaps);
+            if (remoteState.activityLogs) setActivityLogs(remoteState.activityLogs);
+
+            localStorage.setItem('sunik_events', JSON.stringify(remoteState.events));
+            setLiveSyncPulse(true);
+            setTimeout(() => setLiveSyncPulse(false), 2000);
+
+            setTimeout(() => {
+              isRemoteUpdateRef.current = false;
+            }, 200);
+          }
+        }
+      } catch (err) {
+        console.error('Polling sync check error:', err);
+      }
+    }, 5000);
+
+    return () => clearInterval(pollInterval);
+  }, [hasLoadedServerState, events]);
+
+  // 4. Broadcast local changes automatically whenever events, names, slots, or logs change
+  useEffect(() => {
+    if (!hasLoadedServerState || isRemoteUpdateRef.current) return;
     const timer = setTimeout(() => {
       syncStateToServer();
     }, 150);
     return () => clearTimeout(timer);
-  }, [events, familyNames, activityLogs, freeSlots, childcareGaps]);
+  }, [events, familyNames, activityLogs, freeSlots, childcareGaps, hasLoadedServerState]);
 
   // Record an action before modifying events
   const recordAction = (

@@ -434,7 +434,18 @@ export const INITIAL_FREE_SLOTS: FreeSlot[] = [
   },
   {
     id: 'free-2',
-    title: 'Date Night #2: Mid-Month Japanese Omakase',
+    title: 'Date Night #2: Candlelight Wine Bar & Bistro',
+    type: 'couple_date',
+    date: `${prefix}-07`,
+    startTime: '19:30',
+    endTime: '22:00',
+    durationHours: 2.5,
+    reason: 'Relaxing Friday evening couple window! Suren finishes ward rounds by 15:30, Nicole off call, Gerard asleep.',
+    score: 9.6
+  },
+  {
+    id: 'free-3',
+    title: 'Date Night #3: Mid-Month Japanese Omakase',
     type: 'couple_date',
     date: `${prefix}-12`,
     startTime: '19:45',
@@ -444,18 +455,40 @@ export const INITIAL_FREE_SLOTS: FreeSlot[] = [
     score: 9.7
   },
   {
-    id: 'free-3',
-    title: 'Date Night #3: Post-Call Rooftop Sunset & Cocktails',
+    id: 'free-4',
+    title: 'Date Night #4: Rooftop City Bistro & Jazz Evening',
+    type: 'couple_date',
+    date: `${prefix}-18`,
+    startTime: '20:00',
+    endTime: '22:30',
+    durationHours: 2.5,
+    reason: 'Quiet Tuesday evening free of hospital calls & court dates! Great rooftop city views and quality conversation.',
+    score: 9.5
+  },
+  {
+    id: 'free-5',
+    title: 'Date Night #5: Post-Call Sunset Cocktails & Seafood',
     type: 'couple_date',
     date: `${prefix}-24`,
     startTime: '18:30',
     endTime: '21:30',
     durationHours: 3.0,
-    reason: 'Post-call evening window! Suren well rested after daytime recovery. Nicole off duty.',
+    reason: 'Post-call evening window! Suren well rested after daytime recovery sleep. Nicole off duty.',
     score: 9.8
   },
   {
-    id: 'free-4',
+    id: 'free-6',
+    title: 'Date Night #6: Friday Seaside Fine Dining',
+    type: 'couple_date',
+    date: `${prefix}-28`,
+    startTime: '19:30',
+    endTime: '22:00',
+    durationHours: 2.5,
+    reason: 'Verified clear Friday night for Suren & Nicole after Gerard nursery camp week completes.',
+    score: 9.6
+  },
+  {
+    id: 'free-7',
     title: 'Family Time #1: Saturday Botanical Gardens Park & Ice Cream',
     type: 'quality_family',
     date: `${prefix}-08`,
@@ -466,7 +499,7 @@ export const INITIAL_FREE_SLOTS: FreeSlot[] = [
     score: 9.8
   },
   {
-    id: 'free-5',
+    id: 'free-8',
     title: 'Family Time #2: Post-Call Sunday Beach & Splash Park',
     type: 'quality_family',
     date: `${prefix}-16`,
@@ -477,7 +510,7 @@ export const INITIAL_FREE_SLOTS: FreeSlot[] = [
     score: 9.8
   },
   {
-    id: 'free-6',
+    id: 'free-9',
     title: 'Family Time #3: Sunday City Zoo & Picnic Day',
     type: 'quality_family',
     date: `${prefix}-22`,
@@ -486,6 +519,17 @@ export const INITIAL_FREE_SLOTS: FreeSlot[] = [
     durationHours: 4.5,
     reason: 'Golden weekend window! Zero calls or hospital duties for both parents all day. Great outing with 2yo Gerard.',
     score: 9.9
+  },
+  {
+    id: 'free-10',
+    title: 'Family Time #4: Weekend Farmers Market & Toddler Playground',
+    type: 'quality_family',
+    date: `${prefix}-29`,
+    startTime: '09:30',
+    endTime: '12:30',
+    durationHours: 3.0,
+    reason: 'Sunny weekend morning family stroll and outdoor sensory play for Gerard with Suren & Nicole.',
+    score: 9.7
   }
 ];
 
