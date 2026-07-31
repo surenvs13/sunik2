@@ -40,6 +40,7 @@ export interface ScheduleEvent {
   location?: string;
   notes?: string;
   source?: 'doctor_roster' | 'wife_whatsapp' | 'manual' | 'ai_suggested';
+  colorCode?: string;
 }
 
 export interface FreeSlot {

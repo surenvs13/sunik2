@@ -478,6 +478,32 @@ export const CalendarView: React.FC<Props> = ({
 
   // Helper badge color
   const getBadgeStyle = (event: ScheduleEvent) => {
+    if (event.colorCode) {
+      switch (event.colorCode) {
+        case 'red':
+          return 'bg-red-100 text-red-900 border-red-300 font-semibold';
+        case 'blue':
+          return 'bg-blue-100 text-blue-900 border-blue-300 font-semibold';
+        case 'amber':
+          return 'bg-amber-100 text-amber-900 border-amber-300 font-semibold';
+        case 'emerald':
+          return 'bg-emerald-100 text-emerald-900 border-emerald-300 font-semibold';
+        case 'rose':
+          return 'bg-rose-100 text-rose-900 border-rose-300 font-semibold';
+        case 'purple':
+          return 'bg-purple-100 text-purple-900 border-purple-300 font-semibold';
+        case 'cyan':
+          return 'bg-cyan-100 text-cyan-900 border-cyan-300 font-semibold';
+        case 'indigo':
+          return 'bg-indigo-100 text-indigo-900 border-indigo-300 font-semibold';
+        case 'slate':
+        case 'gray':
+          return 'bg-slate-100 text-slate-800 border-slate-300 font-semibold';
+        default:
+          break;
+      }
+    }
+
     const titleLower = (event.title || '').toLowerCase();
     const categoryLower = (event.category || '').toLowerCase();
     const notesLower = (event.notes || '').toLowerCase();
@@ -754,22 +780,11 @@ export const CalendarView: React.FC<Props> = ({
 
           <button
             onClick={() => onOpenAddModal()}
-            className="px-3.5 py-2 text-xs font-bold text-white bg-sky-600 hover:bg-sky-700 rounded-xl shadow-xs transition-colors flex items-center justify-center gap-1.5"
+            className="px-3.5 py-2 text-xs font-bold text-white bg-sky-600 hover:bg-sky-700 rounded-xl shadow-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             <span>Add Custom Event</span>
           </button>
-
-          {onCancelMonthCallDuties && monthCallDuties.length > 0 && (
-            <button
-              onClick={() => setIsCancelCallsModalOpen(true)}
-              className="px-3.5 py-2 text-xs font-black text-red-700 bg-red-50 hover:bg-red-100 hover:text-red-800 rounded-xl shadow-xs transition-colors flex items-center justify-center gap-1.5 border border-red-200"
-              title={`Cancel all ${monthCallDuties.length} on-call duty shifts & post-call rest for ${monthNames[currentMonth]} ${currentYear}`}
-            >
-              <ShieldAlert className="w-4 h-4 text-red-600" />
-              <span>Cancel Call Duties ({monthCallDuties.length})</span>
-            </button>
-          )}
 
           {onDeleteAllEvents && events.length > 0 && (
             <button

@@ -513,6 +513,7 @@ export default function App() {
         {activeTab === 'freetimings' && (
           <FreeTimingsView
             freeSlots={freeSlots}
+            events={events}
             onAddFreeSlotToCalendar={handleAddFreeSlotToCalendar}
             familyNames={familyNames}
           />

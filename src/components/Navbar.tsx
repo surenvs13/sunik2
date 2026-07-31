@@ -5,17 +5,10 @@ import {
   Scale, 
   Baby, 
   Calendar, 
-  Sparkles, 
-  ShieldAlert, 
   Clock, 
   Upload, 
-  Heart,
   RotateCcw,
-  User,
-  Edit3,
-  History,
-  Undo2,
-  Trash2
+  History
 } from 'lucide-react';
 
 interface Props {
@@ -40,16 +33,10 @@ export const Navbar: React.FC<Props> = ({
   activeTab,
   setActiveTab,
   onResetData,
-  onDeleteAllEvents,
   eventCount,
   freeSlotsCount,
-  gapsCount,
   onCallCount,
   historyLogsCount,
-  canUndo,
-  onUndo,
-  familyNames,
-  onOpenEditNames,
   isLiveConnected = true,
   liveSyncPulse = false
 }) => {
@@ -125,22 +112,6 @@ export const Navbar: React.FC<Props> = ({
             </span>
           </div>
 
-          {/* Edit Family Names Button */}
-          <button
-            onClick={onOpenEditNames}
-            className="bg-slate-800 hover:bg-slate-700/90 px-3 py-1.5 rounded-xl border border-sky-500/40 hover:border-sky-400 flex items-center gap-2 text-xs transition-all shadow-xs cursor-pointer group"
-            title="Click to Edit Family Member Names"
-          >
-            <User className="w-3.5 h-3.5 text-sky-400 group-hover:scale-110 transition-transform" />
-            <span className="font-bold text-white">
-              {familyNames.husband} &amp; {familyNames.wife} ({familyNames.child})
-            </span>
-            <span className="ml-1 px-2 py-0.5 text-[10px] font-black bg-sky-500/20 text-sky-300 border border-sky-400/40 rounded-md flex items-center gap-1 group-hover:bg-sky-500 group-hover:text-white transition-all">
-              <Edit3 className="w-2.5 h-2.5" />
-              Edit Names
-            </span>
-          </button>
-
           <div className="bg-slate-800/80 px-3 py-1.5 rounded-xl border border-slate-700/80 flex items-center gap-2">
             <Stethoscope className="w-3.5 h-3.5 text-red-400" />
             <div className="text-xs">
@@ -149,48 +120,9 @@ export const Navbar: React.FC<Props> = ({
             </div>
           </div>
 
-          <div className="bg-slate-800/80 px-3 py-1.5 rounded-xl border border-slate-700/80 flex items-center gap-2">
-            <Heart className="w-3.5 h-3.5 text-emerald-400" />
-            <div className="text-xs">
-              <span className="font-bold text-white">{freeSlotsCount}</span>
-              <span className="text-slate-400 text-[11px] ml-1">Free Windows</span>
-            </div>
-          </div>
-
-          <div className="bg-slate-800/80 px-3 py-1.5 rounded-xl border border-slate-700/80 flex items-center gap-2">
-            <ShieldAlert className="w-3.5 h-3.5 text-amber-400" />
-            <div className="text-xs">
-              <span className="font-bold text-white">{gapsCount}</span>
-              <span className="text-slate-400 text-[11px] ml-1">Overlap Gaps</span>
-            </div>
-          </div>
-
-          {canUndo && onUndo && (
-            <button
-              onClick={onUndo}
-              className="px-3 py-1.5 text-xs font-black text-slate-900 bg-emerald-400 hover:bg-emerald-300 rounded-xl transition-all flex items-center gap-1.5 shadow-md border border-emerald-300"
-              title="Undo Last Schedule Change"
-            >
-              <Undo2 className="w-3.5 h-3.5" />
-              <span>Undo Action</span>
-            </button>
-          )}
-
-          {onDeleteAllEvents && (
-            <button
-              onClick={onDeleteAllEvents}
-              disabled={eventCount === 0}
-              className="p-2 text-rose-400 hover:text-rose-200 hover:bg-rose-950/60 disabled:opacity-40 disabled:pointer-events-none rounded-xl transition-colors text-xs flex items-center gap-1 border border-rose-800/60"
-              title="Delete All Calendar Events"
-            >
-              <Trash2 className="w-3.5 h-3.5 text-rose-400" />
-              <span className="hidden sm:inline font-bold">Delete All</span>
-            </button>
-          )}
-
           <button
             onClick={onResetData}
-            className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-colors text-xs flex items-center gap-1 border border-slate-700"
+            className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-colors text-xs flex items-center gap-1 border border-slate-700 cursor-pointer"
             title="Reset to Sample Roster Data"
           >
             <RotateCcw className="w-3.5 h-3.5" />
@@ -204,7 +136,7 @@ export const Navbar: React.FC<Props> = ({
         <div className="max-w-7xl mx-auto px-4 sm:px-6 flex items-center gap-1 overflow-x-auto py-1">
           <button
             onClick={() => setActiveTab('calendar')}
-            className={`py-2.5 px-4 text-xs font-bold rounded-xl flex items-center gap-2 transition-all shrink-0 ${
+            className={`py-2.5 px-4 text-xs font-bold rounded-xl flex items-center gap-2 transition-all shrink-0 cursor-pointer ${
               activeTab === 'calendar'
                 ? 'bg-sky-600 text-white shadow-md'
                 : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
@@ -216,7 +148,7 @@ export const Navbar: React.FC<Props> = ({
 
           <button
             onClick={() => setActiveTab('freetimings')}
-            className={`py-2.5 px-4 text-xs font-bold rounded-xl flex items-center gap-2 transition-all shrink-0 ${
+            className={`py-2.5 px-4 text-xs font-bold rounded-xl flex items-center gap-2 transition-all shrink-0 cursor-pointer ${
               activeTab === 'freetimings'
                 ? 'bg-emerald-600 text-white shadow-md'
                 : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
@@ -228,19 +160,19 @@ export const Navbar: React.FC<Props> = ({
 
           <button
             onClick={() => setActiveTab('import')}
-            className={`py-2.5 px-4 text-xs font-bold rounded-xl flex items-center gap-2 transition-all shrink-0 ${
+            className={`py-2.5 px-4 text-xs font-bold rounded-xl flex items-center gap-2 transition-all shrink-0 cursor-pointer ${
               activeTab === 'import'
                 ? 'bg-indigo-600 text-white shadow-md'
                 : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
             }`}
           >
             <Upload className="w-4 h-4" />
-            <span>📥 Import PDF/Excel Roster & WhatsApp</span>
+            <span>📥 Import PDF/Excel Roster &amp; WhatsApp</span>
           </button>
 
           <button
             onClick={() => setActiveTab('history')}
-            className={`py-2.5 px-4 text-xs font-bold rounded-xl flex items-center gap-2 transition-all shrink-0 ${
+            className={`py-2.5 px-4 text-xs font-bold rounded-xl flex items-center gap-2 transition-all shrink-0 cursor-pointer ${
               activeTab === 'history'
                 ? 'bg-purple-600 text-white shadow-md'
                 : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
