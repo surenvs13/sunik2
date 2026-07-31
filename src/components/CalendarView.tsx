@@ -22,9 +22,11 @@ import {
   Sun,
   Search,
   ShieldAlert,
+  ShieldCheck,
   RotateCw,
   Edit3
 } from 'lucide-react';
+import { getConflictingEventsForSlot } from '../utils/rosterUtils';
 
 interface Props {
   events: ScheduleEvent[];
@@ -97,28 +99,17 @@ export const CalendarView: React.FC<Props> = ({
     const daysInMonth = new Date(year, month + 1, 0).getDate();
 
     const postCallDates: string[] = [];
-    const freeDates: string[] = [];
 
     for (let d = 1; d <= daysInMonth; d++) {
       const dateStr = `${monthPrefix}-${String(d).padStart(2, '0')}`;
       const dayEvents = allEvents.filter(
         (e) => e.startDate === dateStr || e.endDate === dateStr
       );
-
-      const hasCallDuty = dayEvents.some(
-        (e) =>
-          e.isCallDuty ||
-          e.category === 'On-Call 24h' ||
-          e.category === 'Night Shift'
-      );
       const hasPostCallRest = dayEvents.some(
         (e) => e.category === 'Post-Call Rest' || e.requiresPostCallRest
       );
-
       if (hasPostCallRest) {
         postCallDates.push(dateStr);
-      } else if (!hasCallDuty) {
-        freeDates.push(dateStr);
       }
     }
 
@@ -131,7 +122,7 @@ export const CalendarView: React.FC<Props> = ({
       {
         title: 'Japanese Omakase Night',
         time: '19:45 - 22:00',
-        note: `${familyNames.child} asleep at home with Nanny Maya! Zero hospital or lawyer calls scheduled.`
+        note: `Quiet evening for ${familyNames.husband} & ${familyNames.wife}! Verified clear window.`
       },
       {
         title: 'Post-Call Sunset Cocktails',
@@ -146,12 +137,12 @@ export const CalendarView: React.FC<Props> = ({
       {
         title: 'Rooftop Lounge & Bistro',
         time: '19:30 - 22:00',
-        note: `Evening free of hospital calls! Enjoy rooftop city views and quiet conversation.`
+        note: `Evening free of hospital calls & court dates! Rooftop city views and quiet conversation.`
       },
       {
         title: 'Seafood Fine Dining & Wine Bar',
         time: '18:30 - 21:00',
-        note: `Both parents free in the evening! ${familyNames.child} cared for by Nanny Maya.`
+        note: `Both ${familyNames.husband} & ${familyNames.wife} are verified free in the evening!`
       }
     ];
 
@@ -159,7 +150,7 @@ export const CalendarView: React.FC<Props> = ({
       {
         title: 'Botanical Gardens & Ice Cream',
         time: '15:30 - 18:00',
-        note: `${familyNames.husband} & ${familyNames.wife} both free! Playground & ice cream with 2yo ${familyNames.child}.`
+        note: `${familyNames.husband}, ${familyNames.wife} & 2yo ${familyNames.child} are all verified free! Playground & ice cream.`
       },
       {
         title: 'Post-Call Sunday Beach & Splash Park',
@@ -169,7 +160,7 @@ export const CalendarView: React.FC<Props> = ({
       {
         title: 'Sunday City Zoo & Picnic Day',
         time: '10:00 - 14:30',
-        note: `Golden weekend window! Zero calls or hospital duty for both parents all day.`
+        note: `Golden weekend window! Zero calls or activities for ${familyNames.husband}, ${familyNames.wife} & ${familyNames.child}.`
       },
       {
         title: 'Lakeside Park Bicycle & Playground Day',
@@ -179,7 +170,7 @@ export const CalendarView: React.FC<Props> = ({
       {
         title: 'Children Science Centre & Interactive Fun',
         time: '10:30 - 13:30',
-        note: `Interactive sensory play day for ${familyNames.child} with Mom & Dad!`
+        note: `Interactive sensory play day for ${familyNames.child} with ${familyNames.husband} & ${familyNames.wife}!`
       },
       {
         title: 'Family Weekend Farmers Market & Brunch',
@@ -188,76 +179,125 @@ export const CalendarView: React.FC<Props> = ({
       }
     ];
 
-    const combinedCandidates = [...postCallDates, ...freeDates];
-    if (combinedCandidates.length === 0) {
-      for (let d = 1; d <= 28; d++) {
-        combinedCandidates.push(`${monthPrefix}-${String(d).padStart(2, '0')}`);
+    const dateNightRecs: { id: string; title: string; date: string; time: string; note: string; category: EventCategory }[] = [];
+    const familyRecs: { id: string; title: string; date: string; time: string; note: string; category: EventCategory }[] = [];
+
+    const isSlotConflictFree = (date: string, startTime: string, endTime: string, type: 'couple_date' | 'quality_family') => {
+      const conflicts = getConflictingEventsForSlot({ date, startTime, endTime, type }, allEvents, familyNames);
+      return conflicts.length === 0;
+    };
+
+    // 1. Find 3 Date Night Recs (Zero conflicts for Suren & Nicole)
+    for (let i = 0; i < daysInMonth && dateNightRecs.length < 3; i++) {
+      const dayNum = ((i + seed) % daysInMonth) + 1;
+      const dateStr = `${monthPrefix}-${String(dayNum).padStart(2, '0')}`;
+
+      for (let ideaIdx = 0; ideaIdx < dateNightIdeas.length; ideaIdx++) {
+        const idea = dateNightIdeas[(ideaIdx + seed + i) % dateNightIdeas.length];
+        const [startTime, endTime] = idea.time.split(' - ');
+
+        if (isSlotConflictFree(dateStr, startTime, endTime, 'couple_date')) {
+          if (!dateNightRecs.some((r) => r.date === dateStr)) {
+            const isPostCall = postCallDates.includes(dateStr);
+            const customTitle = `Date Night #${dateNightRecs.length + 1}: ${idea.title}`;
+            const customNote = isPostCall
+              ? `${familyNames.husband} finishes Post-Call Rest at 16:00. Refreshed for evening dinner with ${familyNames.wife}!`
+              : idea.note;
+
+            dateNightRecs.push({
+              id: `rec-date-${monthPrefix}-${dateNightRecs.length}-${seed}`,
+              title: customTitle,
+              date: dateStr,
+              time: idea.time,
+              note: customNote,
+              category: 'Date Night' as EventCategory
+            });
+            break;
+          }
+        }
       }
     }
 
-    const dateNightCandidates: string[] = [];
-    for (let i = 0; i < combinedCandidates.length && dateNightCandidates.length < 3; i++) {
-      const idx = (i + seed) % combinedCandidates.length;
-      const d = combinedCandidates[idx];
-      if (!dateNightCandidates.includes(d)) {
-        dateNightCandidates.push(d);
+    // Fallback if month is busy: test alternate evening windows (19:00 - 21:00, 20:00 - 22:00)
+    if (dateNightRecs.length < 3) {
+      const altTimes = ['19:00 - 21:00', '19:30 - 21:30', '20:00 - 22:00'];
+      for (let d = 1; d <= daysInMonth && dateNightRecs.length < 3; d++) {
+        const dateStr = `${monthPrefix}-${String(d).padStart(2, '0')}`;
+        if (dateNightRecs.some((r) => r.date === dateStr)) continue;
+
+        for (const altTime of altTimes) {
+          const [startTime, endTime] = altTime.split(' - ');
+          if (isSlotConflictFree(dateStr, startTime, endTime, 'couple_date')) {
+            const idea = dateNightIdeas[dateNightRecs.length % dateNightIdeas.length];
+            dateNightRecs.push({
+              id: `rec-date-${monthPrefix}-${dateNightRecs.length}-${seed}`,
+              title: `Date Night #${dateNightRecs.length + 1}: ${idea.title}`,
+              date: dateStr,
+              time: altTime,
+              note: `Verified clear evening window for ${familyNames.husband} & ${familyNames.wife}.`,
+              category: 'Date Night' as EventCategory
+            });
+            break;
+          }
+        }
       }
     }
-    while (dateNightCandidates.length < 3) {
-      const fallbackDay = String((dateNightCandidates.length + 1) * 7).padStart(2, '0');
-      dateNightCandidates.push(`${monthPrefix}-${fallbackDay}`);
-    }
 
-    const familyCandidates: string[] = [];
-    for (let i = 0; i < combinedCandidates.length && familyCandidates.length < 3; i++) {
-      const idx = (i + seed + 2) % combinedCandidates.length;
-      const d = combinedCandidates[idx];
-      if (!familyCandidates.includes(d) && (!dateNightCandidates.includes(d) || combinedCandidates.length < 6)) {
-        familyCandidates.push(d);
+    // 2. Find 3 Family Recs (Zero conflicts for Suren, Nicole & Gerard)
+    for (let i = 0; i < daysInMonth && familyRecs.length < 3; i++) {
+      const dayNum = ((i + seed + 2) % daysInMonth) + 1;
+      const dateStr = `${monthPrefix}-${String(dayNum).padStart(2, '0')}`;
+
+      for (let ideaIdx = 0; ideaIdx < familyIdeas.length; ideaIdx++) {
+        const idea = familyIdeas[(ideaIdx + seed + i) % familyIdeas.length];
+        const [startTime, endTime] = idea.time.split(' - ');
+
+        if (isSlotConflictFree(dateStr, startTime, endTime, 'quality_family')) {
+          if (!familyRecs.some((r) => r.date === dateStr)) {
+            const isPostCall = postCallDates.includes(dateStr);
+            const customTitle = `Family Time #${familyRecs.length + 1}: ${idea.title}`;
+            const customNote = isPostCall
+              ? `${familyNames.husband}'s post-call sleep completes by 15:00. Great afternoon family outing with ${familyNames.child}!`
+              : idea.note;
+
+            familyRecs.push({
+              id: `rec-fam-${monthPrefix}-${familyRecs.length}-${seed}`,
+              title: customTitle,
+              date: dateStr,
+              time: idea.time,
+              note: customNote,
+              category: 'Family Outing' as EventCategory
+            });
+            break;
+          }
+        }
       }
     }
-    while (familyCandidates.length < 3) {
-      const fallbackDay = String((familyCandidates.length + 1) * 6).padStart(2, '0');
-      familyCandidates.push(`${monthPrefix}-${fallbackDay}`);
+
+    // Fallback if month is busy for family outings: test alternate daytime windows (15:30 - 18:00, 16:00 - 18:30, 10:00 - 12:30)
+    if (familyRecs.length < 3) {
+      const altTimes = ['15:30 - 18:00', '16:00 - 18:30', '10:00 - 12:30'];
+      for (let d = 1; d <= daysInMonth && familyRecs.length < 3; d++) {
+        const dateStr = `${monthPrefix}-${String(d).padStart(2, '0')}`;
+        if (familyRecs.some((r) => r.date === dateStr)) continue;
+
+        for (const altTime of altTimes) {
+          const [startTime, endTime] = altTime.split(' - ');
+          if (isSlotConflictFree(dateStr, startTime, endTime, 'quality_family')) {
+            const idea = familyIdeas[familyRecs.length % familyIdeas.length];
+            familyRecs.push({
+              id: `rec-fam-${monthPrefix}-${familyRecs.length}-${seed}`,
+              title: `Family Time #${familyRecs.length + 1}: ${idea.title}`,
+              date: dateStr,
+              time: altTime,
+              note: `Verified clear window for ${familyNames.husband}, ${familyNames.wife} & ${familyNames.child}.`,
+              category: 'Family Outing' as EventCategory
+            });
+            break;
+          }
+        }
+      }
     }
-
-    const dateNightRecs = dateNightCandidates.map((date, idx) => {
-      const ideaIndex = (idx + seed) % dateNightIdeas.length;
-      const idea = dateNightIdeas[ideaIndex];
-      const isPostCall = postCallDates.includes(date);
-      const customTitle = `Date Night #${idx + 1}: ${idea.title}`;
-      const customNote = isPostCall
-        ? `${familyNames.husband} finishes Post-Call Rest at 16:00. Refreshed for evening dinner with ${familyNames.wife}!`
-        : idea.note;
-
-      return {
-        id: `rec-date-${monthPrefix}-${idx}-${seed}`,
-        title: customTitle,
-        date,
-        time: idea.time,
-        note: customNote,
-        category: 'Date Night' as EventCategory
-      };
-    });
-
-    const familyRecs = familyCandidates.map((date, idx) => {
-      const ideaIndex = (idx + seed) % familyIdeas.length;
-      const idea = familyIdeas[ideaIndex];
-      const isPostCall = postCallDates.includes(date);
-      const customTitle = `Family Time #${idx + 1}: ${idea.title}`;
-      const customNote = isPostCall
-        ? `${familyNames.husband}'s post-call sleep completes by 15:00. Great afternoon family outing with ${familyNames.child}!`
-        : idea.note;
-
-      return {
-        id: `rec-fam-${monthPrefix}-${idx}-${seed}`,
-        title: customTitle,
-        date,
-        time: idea.time,
-        note: customNote,
-        category: 'Family Outing' as EventCategory
-      };
-    });
 
     return { dateNightRecs, familyRecs };
   };
@@ -984,6 +1024,10 @@ export const CalendarView: React.FC<Props> = ({
                           <span>{item.date}</span>
                           <span>{item.time}</span>
                         </div>
+                        <div className="mb-2 inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-100/90 text-emerald-900 border border-emerald-300 rounded-md text-[10px] font-bold">
+                          <ShieldCheck className="w-3 h-3 text-emerald-600 shrink-0" />
+                          <span>Zero Conflicts: {familyNames.husband} &amp; {familyNames.wife} free</span>
+                        </div>
                         <div className="text-xs font-bold text-slate-900 mb-1">{item.title}</div>
                         <p className="text-[11px] text-slate-600 leading-snug mb-3">{item.note}</p>
                       </div>
@@ -1049,6 +1093,10 @@ export const CalendarView: React.FC<Props> = ({
                         <div className="flex items-center justify-between text-[11px] font-bold text-emerald-800 mb-1">
                           <span>{item.date}</span>
                           <span>{item.time}</span>
+                        </div>
+                        <div className="mb-2 inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-100/90 text-emerald-900 border border-emerald-300 rounded-md text-[10px] font-bold">
+                          <ShieldCheck className="w-3 h-3 text-emerald-600 shrink-0" />
+                          <span>Zero Conflicts: {familyNames.husband}, {familyNames.wife} &amp; {familyNames.child} free</span>
                         </div>
                         <div className="text-xs font-bold text-slate-900 mb-1">{item.title}</div>
                         <p className="text-[11px] text-slate-600 leading-snug mb-3">{item.note}</p>
